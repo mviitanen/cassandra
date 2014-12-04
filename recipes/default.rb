@@ -25,9 +25,16 @@ end
 # 15  sudo apt-get update
 include_recipe "apt::default"
 
+apt_package "install-cassandra" do
+  package_name "cassandra"
+  version "2.0.11"
+  action :install
+end
+
 # 16  sudo apt-get install dsc20
 apt_package "install-dsc20" do
   package_name "dsc20"
+  version "2.0.11-1"
   action :install
 end
 apt_package "datastax-agent" do
