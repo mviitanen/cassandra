@@ -1,36 +1,38 @@
 # -*- mode: ruby -*-
 # vi: set ft=ruby :
 
+boxes = [
+  { :name => :cassandra1,:ip => '172.28.128.4',:ssh_port => 2201,:cpus => 1, :mem => 512},
+  { :name => :cassandra2,:ip => '172.28.128.5',:ssh_port => 2202,:cpus => 1,:mem => 512 }
+  ]
 # Vagrantfile API/syntax version. Don't touch unless you know what you're doing!
 VAGRANTFILE_API_VERSION = "2"
 
 Vagrant.require_version ">= 1.5.0"
 
+
+
 Vagrant.configure(VAGRANTFILE_API_VERSION) do |config|
+ boxes.each do |opts|
 
-  # Set the version of chef to install using the vagrant-omnibus plugin
-  config.omnibus.chef_version = :latest
+        config.vm.define opts[:name] do |config|
+            # Set the version of chef to install using the vagrant-omnibus plugin
+            config.omnibus.chef_version = :latest
+            config.vm.box = "opscode_ubuntu-12.04_provisionerless"
+            config.vm.box_url = "https://opscode-vm-bento.s3.amazonaws.com/vagrant/opscode_ubuntu-12.04_provisionerless.box"
+    	#    config.vm.box       = "elatov/opensuse13-64"
+    	#    config.vm.box_url   = "https://vagrantcloud.com/elatov/opensuse13-64/version/1/provider/virtualbox.box"
+    	    config.vm.network  "private_network", ip: opts[:ip]
+    	    #config.vm.network  "private_network", type:"dhcp"
+    	    config.vm.network  "forwarded_port", guest: 22, host: opts[:ssh_port]
+    	    config.vm.hostname = "%s.vagrant" % opts[:name].to_s
+    	    config.vm.synced_folder "~/shared", "/vagrant"
 
-  config.vm.define "cassandra1" do |cassandra1|
-    cassandra1.vm.hostname = "cassandra-server-1"
-
-  # Every Vagrant virtual environment requires a box to build off of.
-    cassandra1.vm.box = "opscode_ubuntu-12.04_provisionerless"
-    cassandra1.vm.box_url = "https://opscode-vm-bento.s3.amazonaws.com/vagrant/opscode_ubuntu-12.04_provisionerless.box"
-
-  # networking
-    cassandra1.vm.network :private_network, ip:"172.28.128.4", netmask:"255.255.255.0"
-  
-
-  # Create a forwarded port mapping which allows access to a specific port
-  # within the machine from a port on the host machine. In the example below,
-  # accessing "localhost:8080" will access port 80 on the guest machine.
-
-  # Share an additional folder to the guest VM. The first argument is
-  # the path on the host to the actual folder. The second argument is
-  # the path on the guest to mount the folder. And the optional third
-  # argument is a set of non-required options.
-  # config.vm.synced_folder "shared_data", "/shared_data"
+	    config.vm.provider "virtualbox" do |vb|
+  	    # Use VBoxManage to customize the VM
+    	        vb.customize ["modifyvm", :id, "--cpus", opts[:cpus] ] if opts[:cpus]
+    	        vb.customize ["modifyvm", :id, "--memory", opts[:mem] ] if opts[:mem]
+	    end
 
   # Provider-specific configuration so you can fine-tune various
   # backing providers for Vagrant. These expose provider-specific options.
@@ -52,7 +54,7 @@ Vagrant.configure(VAGRANTFILE_API_VERSION) do |config|
 
   # Enabling the Berkshelf plugin. To enable this globally, add this configuration
   # option to your ~/.vagrant.d/Vagrantfile file
-  cassandra1.berkshelf.enabled = true
+  config.berkshelf.enabled = true
 
   # An array of symbols representing groups of cookbook described in the Vagrantfile
   # to exclusively install and copy to Vagrant's shelf.
@@ -62,27 +64,30 @@ Vagrant.configure(VAGRANTFILE_API_VERSION) do |config|
   # to skip installing and copying to Vagrant's shelf.
   # config.berkshelf.except = []
 
-    cassandra1.vm.provision :chef_solo do |chef|
-      chef.json = {
-        mysql: {
-          server_root_password: 'rootpass',
-          server_debian_password: 'debpass',
-          server_repl_password: 'replpass'
-        },
-        java: {
-        install_flavor: 'oracle',
-          jdk_version: '7',
-          oracle: {
-            accept_oracle_download_terms: true
-          }
-        }
-      }
 
-      chef.run_list = [
-         "recipe[apt::default]",
-         "recipe[java::default]",
-         "recipe[myapp::default]"
-      ]
-    end
-  end
+            config.vm.provision :chef_solo do |chef|
+                chef.json = {
+                    mysql: {
+                        server_root_password: 'rootpass',
+                        server_debian_password: 'debpass',
+                        server_repl_password: 'replpass'
+                    },
+                    java: {
+                        install_flavor: 'oracle',
+                        jdk_version: '7',
+                        oracle: {
+                            accept_oracle_download_terms: true
+                        }
+                    }         
+                }
+
+                chef.run_list = [
+                    "recipe[apt::default]",
+                    "recipe[java::default]",
+                    "recipe[myapp::default]"
+                ]
+            end
+        end
+ end
+
 end
