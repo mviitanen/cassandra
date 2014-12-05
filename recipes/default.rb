@@ -20,8 +20,6 @@ apt_repository 'datastax' do
 end
 
 
-
-
 # 15  sudo apt-get update
 include_recipe "apt::default"
 
@@ -37,11 +35,11 @@ apt_package "install-dsc20" do
   version "2.0.11-1"
   action :install
 end
+
 apt_package "datastax-agent" do
   package_name "datastax-agent"
   action :install
 end
-
 
 cookbook_file "cassandra.yaml" do
   path "/etc/cassandra/cassandra.yaml"
@@ -52,14 +50,14 @@ execute "start-cassandra" do
     command "sudo cassandra"
 end
 
-
-
 template "/etc/cassandra/cassandra.yaml" do
   source "etc/cassandra/cassandra.yaml.erb"
-  mode 0440
+  mode 0644
   owner "root"
   group "root"
   variables({
-     :cluster_name => node[:cassandra][:config][:cluster_name]
+     :cluster_name => node[:cassandra][:config][:cluster_name],
+     :seed => node[:cassandra][:config][:seed],
+     :listen_address => node[:cassandra][:config][:listen_address]
   })
 end
